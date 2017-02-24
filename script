@@ -1,0 +1,185 @@
+var SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/11VtDPa6kDIQnFFxO058WKrZnmZhOs_jfDWpt-zLPD6M/edit#gid=908295050';
+var imp;
+var clicks;
+var convclicks;
+var cost;
+var avgposn;
+var geo = ["ANZ","Europe","India","MEnA","Resellers","The UK","US+Can"]
+var spreadsheet = SpreadsheetApp.openByUrl(SPREADSHEET_URL);
+var currentdate= new Date();
+var m = currentdate.getMonth()+1;
+var col=m+3;
+
+function main()
+{
+  Logger.log('Using spreadsheet - %s.', SPREADSHEET_URL);
+  
+  spreadsheet.setSpreadsheetTimeZone(AdWordsApp.currentAccount().getTimeZone());
+
+  for (var j=0;j<3;j++)  //To get campaign type data for all sheet
+  {
+    if (j==0)
+      campaignData("Search","NULL",16);
+    else if(j==1)
+      campaignData("Disp","Remarketing",25);
+    else
+      campaignData("Remarketing","NULL",34);
+  }
+ 
+  getOverall(5); //To get the Overall data of all sheets
+  
+}
+   
+ function getOverall(r){ 
+   imp=0;
+   clicks=0;
+   convclicks=0;  
+  cost=0;
+  avgposn=0;
+   var accountSelector = MccApp.accounts()
+  .withIds(['552-793-9721','887-741-0775']);
+    var accountIterator = accountSelector.get();
+  while (accountIterator.hasNext())   
+  {
+   var account = accountIterator.next();
+    MccApp.select(account); 
+    var currentmonth = account.getStatsFor("THIS_MONTH");
+    getstatsforCampaign(account,currentmonth);
+  } 
+  var sheet = spreadsheet.getSheetByName("Overall");
+  fillvalues(sheet,col,5);   
+  for (var i=0; i<7 ;i++)
+  { 
+    var accountSelector = MccApp.accounts()
+  .withIds(['552-793-9721','887-741-0775']);
+    var accountIterator = accountSelector.get();
+   imp=0;
+   clicks=0;
+   convclicks=0;  
+   cost=0;
+   avgposn=0;
+    while (accountIterator.hasNext())   
+    {
+      var account = accountIterator.next();
+      MccApp.select(account);
+      Logger.log(geo[i])
+      var campaignIterator = AdWordsApp.campaigns()
+      .withCondition("LabelNames CONTAINS_ANY ['"+geo[i]+"']")
+      .get();
+  
+      while (campaignIterator.hasNext())
+      {
+        var campaign1 = campaignIterator.next();
+        var currentmonth = campaign1.getStatsFor("THIS_MONTH");
+        getstatsforCampaign(campaign1,currentmonth);
+      }  
+    }
+      
+      var sheet = spreadsheet.getSheetByName(geo[i]);
+  
+      fillvalues(sheet,col,r);
+  }
+  }
+     
+//To get stats for this month by campaign type    
+
+function campaignData(str1,str2,r)
+  {
+    var accountSelector = MccApp.accounts()
+  .withIds(['552-793-9721','887-741-0775']);
+    var accountIterator = accountSelector.get();
+   imp=0;
+   clicks=0;
+   convclicks=0;  
+   cost=0;
+   avgposn=0;
+    while (accountIterator.hasNext())   
+    {
+      var account = accountIterator.next();
+      MccApp.select(account);
+      var campaignIterator = AdWordsApp.campaigns()
+      .withCondition("Name CONTAINS '"+str1+"'")
+      .withCondition("Name DOES_NOT_CONTAIN '"+str2+"'")
+      .get();
+  
+      while (campaignIterator.hasNext())
+      {
+        var campaign1 = campaignIterator.next();
+        var currentmonth = campaign1.getStatsFor("THIS_MONTH");
+        getstatsforCampaign(campaign1,currentmonth);
+      }  
+    }
+      
+      var sheet = spreadsheet.getSheetByName("Overall");
+      Logger.log(sheet);
+    fillvalues(sheet,col,r);
+  for (var i=0; i<7 ;i++)
+  { 
+   var accountSelector = MccApp.accounts()
+  .withIds(['552-793-9721','887-741-0775']);
+    var accountIterator = accountSelector.get();
+   imp=0;
+   clicks=0;
+   convclicks=0;  
+   cost=0;
+    avgposn=0;
+    while (accountIterator.hasNext())   
+    {
+      var account = accountIterator.next();
+      MccApp.select(account);
+      Logger.log(geo[i])
+      var campaignIterator = AdWordsApp.campaigns()
+      .withCondition("LabelNames CONTAINS_ANY ['"+geo[i]+"']")
+      .withCondition("Name CONTAINS '"+str1+"'")
+      .withCondition("Name DOES_NOT_CONTAIN '"+str2+"'")
+      .get();
+  
+      while (campaignIterator.hasNext())
+      {
+        var campaign1 = campaignIterator.next();
+        var currentmonth = campaign1.getStatsFor("THIS_MONTH");
+        getstatsforCampaign(campaign1,currentmonth);
+      }  
+    }
+      
+      var sheet = spreadsheet.getSheetByName(geo[i]);
+  
+      fillvalues(sheet,col,r);
+   
+  }
+  }
+   
+
+
+function getstatsforCampaign(campaign, timeperiod)
+{
+  
+  imp = imp + timeperiod.getImpressions();
+  clicks = clicks + timeperiod.getClicks();
+  convclicks = convclicks + timeperiod.getConversions();
+  cost = cost + timeperiod.getCost();
+  avgposn = avgposn + timeperiod.getAveragePosition()*timeperiod.getImpressions();
+ 
+ }
+
+
+function fillvalues(sheet,i,r)
+{
+    var ctr = clicks/imp;
+    var clickconvrate = convclicks/clicks;
+    var cpc = cost/clicks;
+    var cpa = cost/convclicks;
+    var ap = avgposn/imp;
+  
+    sheet.getRange(r,i).setValue(imp);
+    sheet.getRange(r+1,i).setValue(clicks);
+    sheet.getRange(r+2,i).setValue(ctr);
+    sheet.getRange(r+3,i).setValue(convclicks);
+    sheet.getRange(r+4,i).setValue(clickconvrate);
+    sheet.getRange(r+5,i).setValue(cost);
+    sheet.getRange(r+6,i).setValue(cpa);
+    sheet.getRange(r+7,i).setValue(cpc);
+    sheet.getRange(r+8,i).setValue(ap);
+  
+}
+  
